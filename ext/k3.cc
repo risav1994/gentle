@@ -105,7 +105,7 @@ public:
     phone_syms_rxfilename = graph_dir + "/phones.txt";
   }
 
-  std::string process_audio(object &py_file, int chunk_len)
+  std::string process_audio(char* chunk, int chunk_len)
   {
     using namespace kaldi;
     using namespace fst;
@@ -161,14 +161,19 @@ public:
                                         *decode_fst,
                                         &feature_pipeline);
 
-    FILE* file_obj = py3c_PyFile_AsFileWithMode(py_file.ptr(), "r");
 
     // Get chunk length from python
 
     int16_t audio_chunk[chunk_len];  
     Vector<BaseFloat> wave_part = Vector<BaseFloat>(chunk_len);
+
+    std::string chunk_string = std::string(chunk);
+
+    for (int i = 0; i < chunk_len; i++) 
+    {
+      audio_chunk[i] = static_cast<int16_t>((chunk_string[2 * i + 1] + chunk_string[2 * i  + 2]).c_str());
+    }
     
-    fread(&audio_chunk, 2, chunk_len, file_obj);
     
     // We need to copy this into the `wave_part' Vector<BaseFloat> thing.
     // From `gst-audio-source.cc' in gst-kaldi-nnet2
