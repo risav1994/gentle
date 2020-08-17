@@ -107,6 +107,8 @@ public:
 
   std::string process_audio(object &py_file, int chunk_len)
   {
+    using namespace kaldi;
+    using namespace fst;
     WordBoundaryInfoNewOpts opts; // use default opts
     WordBoundaryInfo word_boundary_info(opts, word_boundary_filename);
 
