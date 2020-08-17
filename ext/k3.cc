@@ -78,7 +78,7 @@ void usage() {
   fprintf(stderr, "usage: k3 [nnet_dir hclg_path]\n");
 }
 
-class kald_model
+class kaldi_model
 {
 private:
   std::string nnet_dir, graph_dir, fst_rxfilename, ivector_model_dir, nnet3_rxfilename, word_syms_rxfilename, word_boundary_filename, 
