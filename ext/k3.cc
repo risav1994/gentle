@@ -105,7 +105,7 @@ public:
     phone_syms_rxfilename = graph_dir + "/phones.txt";
   }
 
-  std::string process_audio(std::string chunk_file, int chunk_len)
+  std::string process_audio(char* chunk_file, int chunk_len)
   {
     using namespace kaldi;
     using namespace fst;
