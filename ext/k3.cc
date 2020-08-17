@@ -161,7 +161,7 @@ public:
                                         *decode_fst,
                                         &feature_pipeline);
 
-    FILE* file_obj = PyFile_AsFile(py_file.ptr());
+    FILE* file_obj = py3c_PyFile_AsFileWithMode(py_file.ptr(), "r");
 
     // Get chunk length from python
 
@@ -216,10 +216,10 @@ public:
         // <eps> links - silence
         continue;
       }
-      res += std::string(boost::format("word: %1% / start: %2% / duration: %3%\n") % word_syms->Find(words[i]) % times[i] * frame_shift % lengths[i] * frame_shift);
+      res += std::string(boost::format("word: %1% / start: %2% / duration: %3%\n") % word_syms->Find(words[i]) % (times[i] * frame_shift) % (lengths[i] * frame_shift));
       // Print out the phonemes for this word
       for(size_t j=0; j<phone_lengths[i].size(); j++) {
-        res += std::string(boost::format("phone: %1% / duration: %2%\n") % phone_syms->Find(prons[i][j]) % phone_lengths[i][j] * frame_shift);
+        res += std::string(boost::format("phone: %1% / duration: %2%\n") % phone_syms->Find(prons[i][j]) % (phone_lengths[i][j] * frame_shift));
       }
     }
     return res;
