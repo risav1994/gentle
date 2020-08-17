@@ -105,7 +105,7 @@ public:
     phone_syms_rxfilename = graph_dir + "/phones.txt";
   }
 
-  std::string process_audio(char* chunk, int chunk_len)
+  std::string process_audio(int16_t* chunk, int chunk_len)
   {
     using namespace kaldi;
     using namespace fst;
@@ -170,8 +170,8 @@ public:
 
     for (int i = 0; i < chunk_len; i++) 
     {
-      std::string mini_chunk = std::string(&(chunk[2 * i + 1])) + std::string(&(chunk[2 * i  + 2]));
-      audio_chunk[i] = reinterpret_cast<int16_t>(mini_chunk);
+      // std::string mini_chunk = std::string(&(chunk[2 * i + 1])) + std::string(&(chunk[2 * i  + 2]));
+      audio_chunk[i] = chunk[i];
     }
     
     
