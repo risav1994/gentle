@@ -105,7 +105,7 @@ public:
     phone_syms_rxfilename = graph_dir + "/phones.txt";
   }
 
-  std::string process_audio(int16_t* chunk, int chunk_len)
+  std::string process_audio(std::string chunk_file, int chunk_len)
   {
     using namespace kaldi;
     using namespace fst;
@@ -167,12 +167,14 @@ public:
     int16_t audio_chunk[chunk_len];  
     Vector<BaseFloat> wave_part = Vector<BaseFloat>(chunk_len);
 
+    FILE* fp = fopen(chunk_file, "rb");
 
-    for (int i = 0; i < chunk_len; i++) 
-    {
-      // std::string mini_chunk = std::string(&(chunk[2 * i + 1])) + std::string(&(chunk[2 * i  + 2]));
-      audio_chunk[i] = chunk[i];
-    }
+    fread(&audio_chunk, 2, chunk_len, fp);
+    // for (int i = 0; i < chunk_len; i++) 
+    // {
+    //   // std::string mini_chunk = std::string(&(chunk[2 * i + 1])) + std::string(&(chunk[2 * i  + 2]));
+    //   audio_chunk[i] = chunk[i];
+    // }
     
     
     // We need to copy this into the `wave_part' Vector<BaseFloat> thing.
@@ -221,10 +223,10 @@ public:
         // <eps> links - silence
         continue;
       }
-      res += std::string(boost::format("word: %1% / start: %2% / duration: %3%\n") % word_syms->Find(words[i]) % (times[i] * frame_shift) % (lengths[i] * frame_shift));
+      // res += std::string(boost::format("word: %1% / start: %2% / duration: %3%\n") % word_syms->Find(words[i]) % (times[i] * frame_shift) % (lengths[i] * frame_shift));
       // Print out the phonemes for this word
       for(size_t j=0; j<phone_lengths[i].size(); j++) {
-        res += std::string(boost::format("phone: %1% / duration: %2%\n") % phone_syms->Find(prons[i][j]) % (phone_lengths[i][j] * frame_shift));
+        // res += std::string(boost::format("phone: %1% / duration: %2%\n") % phone_syms->Find(prons[i][j]) % (phone_lengths[i][j] * frame_shift));
       }
     }
     return res;
