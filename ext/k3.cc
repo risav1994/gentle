@@ -170,7 +170,7 @@ public:
 
     for (int i = 0; i < chunk_len; i++) 
     {
-      std::string mini_chunk = std::string(chunk[2 * i + 1]) + std::string(chunk[2 * i  + 2]);
+      std::string mini_chunk = std::string(&(chunk[2 * i + 1])) + std::string(&(chunk[2 * i  + 2]));
       audio_chunk[i] = static_cast<int16_t>(mini_chunk.c_str());
     }
     
