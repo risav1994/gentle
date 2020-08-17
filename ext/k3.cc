@@ -9,6 +9,11 @@
 #include "lat/lattice-functions.h"
 #include "lat/word-align-lattice.h"
 #include "nnet3/decodable-simple-looped.h"
+#include <Python.h>
+#include <boost/python.hpp>
+#include <boost/format.hpp>
+
+using namespace boost::python;
 
 #ifdef HAVE_CUDA
 #include "cudamatrix/cu-device.h"
@@ -73,40 +78,35 @@ void usage() {
   fprintf(stderr, "usage: k3 [nnet_dir hclg_path]\n");
 }
 
-int main(int argc, char *argv[]) {
-    using namespace kaldi;
-    using namespace fst;
+class kald_model
+{
+private:
+  std::string nnet_dir, graph_dir, fst_rxfilename, ivector_model_dir, nnet3_rxfilename, word_syms_rxfilename, word_boundary_filename, 
+      phone_syms_rxfilename;
 
-    setbuf(stdout, NULL);  
-
-    std::string nnet_dir = "exp/tdnn_7b_chain_online";
-    std::string graph_dir = nnet_dir + "/graph_pp";
-    std::string fst_rxfilename = graph_dir + "/HCLG.fst";
+public:
+  kaldi_model(std::string _nnet_dir, std::string _graph_dir, std::string _fst_rxfilename)
+  {
+    nnet_dir = _nnet_dir;
+    graph_dir = _graph_dir;
+    fst_rxfilename = _fst_rxfilename;
+    #ifdef HAVE_CUDA
+      fprintf(stdout, "Cuda enabled\n");
+      CuDevice &cu_device = CuDevice::Instantiate();
+      cu_device.SetVerbose(true);
+      cu_device.SelectGpuId("yes");
+      fprintf(stdout, "active gpu: %d\n", cu_device.ActiveGpuId());
+    #endif
+    ivector_model_dir = nnet_dir + "/ivector_extractor";
+    nnet3_rxfilename = nnet_dir + "/final.mdl";
     
-    if(argc == 3) {
-      nnet_dir = argv[1];
-      graph_dir = nnet_dir + "/graph_pp";
-      fst_rxfilename = argv[2];
-    }
-    else if(argc != 1) {
-      usage();
-      return EXIT_FAILURE;
-    }
-	
-#ifdef HAVE_CUDA
-    fprintf(stdout, "Cuda enabled\n");
-    CuDevice &cu_device = CuDevice::Instantiate();
-    cu_device.SetVerbose(true);
-    cu_device.SelectGpuId("yes");
-    fprintf(stdout, "active gpu: %d\n", cu_device.ActiveGpuId());
-#endif
-    const std::string ivector_model_dir = nnet_dir + "/ivector_extractor";
-    const std::string nnet3_rxfilename = nnet_dir + "/final.mdl";
-    
-    const std::string word_syms_rxfilename = graph_dir + "/words.txt";
-    const string word_boundary_filename = graph_dir + "/phones/word_boundary.int";
-    const string phone_syms_rxfilename = graph_dir + "/phones.txt";
+    word_syms_rxfilename = graph_dir + "/words.txt";
+    word_boundary_filename = graph_dir + "/phones/word_boundary.int";
+    phone_syms_rxfilename = graph_dir + "/phones.txt";
+  }
 
+  std::string process_audio(object &py_file, int chunk_len)
+  {
     WordBoundaryInfoNewOpts opts; // use default opts
     WordBoundaryInfo word_boundary_info(opts, word_boundary_filename);
 
@@ -154,112 +154,271 @@ int main(int argc, char *argv[]) {
         
     SingleUtteranceNnet3Decoder decoder(nnet3_decoding_config,
                                         trans_model,
-					de_nnet_simple_looped_info,
+          de_nnet_simple_looped_info,
                                         //am_nnet, // kaldi::nnet3::DecodableNnetSimpleLoopedInfo
                                         *decode_fst,
                                         &feature_pipeline);
 
+    FILE* file_obj = PyFile_AsFile(py_file.ptr());
 
-  char cmd[1024];
+    // Get chunk length from python
 
-  while(true) {
-    // Let the client decide what we should do...
-    fgets(cmd, sizeof(cmd), stdin);
-
-    if(strcmp(cmd,"stop\n") == 0) {
-      break;
+    int16_t audio_chunk[chunk_len];  
+    Vector<BaseFloat> wave_part = Vector<BaseFloat>(chunk_len);
+    
+    fread(&audio_chunk, 2, chunk_len, file_obj);
+    
+    // We need to copy this into the `wave_part' Vector<BaseFloat> thing.
+    // From `gst-audio-source.cc' in gst-kaldi-nnet2
+    for (int i = 0; i < chunk_len ; ++i) {
+      (wave_part)(i) = static_cast<BaseFloat>(audio_chunk[i]);
     }
-    else if(strcmp(cmd,"reset\n") == 0) {
-      feature_pipeline.~OnlineNnet2FeaturePipeline();
-      new (&feature_pipeline) OnlineNnet2FeaturePipeline(feature_info);
-      
-      decoder.~SingleUtteranceNnet3Decoder();
-      new (&decoder) SingleUtteranceNnet3Decoder(nnet3_decoding_config,
-                                                 trans_model,
-						 de_nnet_simple_looped_info,
-                                                 //am_nnet,
-                                                 *decode_fst,
-                                                 &feature_pipeline);
+
+    feature_pipeline.AcceptWaveform(arate, wave_part);
+
+    std::vector<std::pair<int32, BaseFloat> > delta_weights;
+    if (silence_weighting.Active()) {
+      silence_weighting.ComputeCurrentTraceback(decoder.Decoder());
+      silence_weighting.GetDeltaWeights(feature_pipeline.NumFramesReady(),
+                                        &delta_weights);
+      feature_pipeline.IvectorFeature()->UpdateFrameWeights(delta_weights);
     }
-    else if(strcmp(cmd,"push-chunk\n") == 0) {
 
-      // Get chunk length from python
-      int chunk_len;
-      fgets(cmd, sizeof(cmd), stdin);
-      sscanf(cmd, "%d\n", &chunk_len);
+    decoder.AdvanceDecoding();
 
-      int16_t audio_chunk[chunk_len];  
-      Vector<BaseFloat> wave_part = Vector<BaseFloat>(chunk_len);
-      
-      fread(&audio_chunk, 2, chunk_len, stdin);
-      
-      // We need to copy this into the `wave_part' Vector<BaseFloat> thing.
-      // From `gst-audio-source.cc' in gst-kaldi-nnet2
-      for (int i = 0; i < chunk_len ; ++i) {
-        (wave_part)(i) = static_cast<BaseFloat>(audio_chunk[i]);
+    feature_pipeline.InputFinished(); // Computes last few frames of input
+    decoder.AdvanceDecoding();        // Decodes remaining frames
+    decoder.FinalizeDecoding();
+
+    Lattice final_lat;
+    decoder.GetBestPath(true, &final_lat);
+    CompactLattice clat;
+    ConvertLattice(final_lat, &clat);      
+
+    // Compute prons alignment (see: kaldi/latbin/nbest-to-prons.cc)
+    CompactLattice aligned_clat;
+
+    std::vector<int32> words, times, lengths;
+    std::vector<std::vector<int32> > prons;
+    std::vector<std::vector<int32> > phone_lengths;
+
+    WordAlignLattice(clat, trans_model, word_boundary_info,
+                     0, &aligned_clat);
+
+    CompactLatticeToWordProns(trans_model, aligned_clat, &words, &times,
+                              &lengths, &prons, &phone_lengths);
+
+    std::string res = "";
+    for (int i = 0; i < words.size(); i++) {
+      if(words[i] == 0) {
+        // <eps> links - silence
+        continue;
       }
-
-      feature_pipeline.AcceptWaveform(arate, wave_part);
-
-      std::vector<std::pair<int32, BaseFloat> > delta_weights;
-      if (silence_weighting.Active()) {
-        silence_weighting.ComputeCurrentTraceback(decoder.Decoder());
-        silence_weighting.GetDeltaWeights(feature_pipeline.NumFramesReady(),
-                                          &delta_weights);
-        feature_pipeline.IvectorFeature()->UpdateFrameWeights(delta_weights);
+      res += std::string(boost::format("word: %1% / start: %2% / duration: %3%\n") % word_syms->Find(words[i]) % times[i] * frame_shift % lengths[i] * frame_shift);
+      // Print out the phonemes for this word
+      for(size_t j=0; j<phone_lengths[i].size(); j++) {
+        res += std::string(boost::format("phone: %1% / duration: %2%\n") % phone_syms->Find(prons[i][j]) % phone_lengths[i][j] * frame_shift);
       }
-
-      decoder.AdvanceDecoding();
-
-      fprintf(stdout, "ok\n");
     }
-    else if(strcmp(cmd, "get-final\n") == 0) {
-      feature_pipeline.InputFinished(); // Computes last few frames of input
-      decoder.AdvanceDecoding();        // Decodes remaining frames
-      decoder.FinalizeDecoding();
-
-      Lattice final_lat;
-      decoder.GetBestPath(true, &final_lat);
-      CompactLattice clat;
-      ConvertLattice(final_lat, &clat);      
-
-      // Compute prons alignment (see: kaldi/latbin/nbest-to-prons.cc)
-      CompactLattice aligned_clat;
-
-      std::vector<int32> words, times, lengths;
-      std::vector<std::vector<int32> > prons;
-      std::vector<std::vector<int32> > phone_lengths;
-
-      WordAlignLattice(clat, trans_model, word_boundary_info,
-                       0, &aligned_clat);
-
-      CompactLatticeToWordProns(trans_model, aligned_clat, &words, &times,
-                                &lengths, &prons, &phone_lengths);
-
-      for (int i = 0; i < words.size(); i++) {
-        if(words[i] == 0) {
-          // <eps> links - silence
-          continue;
-        }
-        fprintf(stdout, "word: %s / start: %f / duration: %f\n",
-                word_syms->Find(words[i]).c_str(),
-                times[i] * frame_shift,
-                lengths[i] * frame_shift);
-        // Print out the phonemes for this word
-        for(size_t j=0; j<phone_lengths[i].size(); j++) {
-          fprintf(stdout, "phone: %s / duration: %f\n",
-                  phone_syms->Find(prons[i][j]).c_str(),
-                  phone_lengths[i][j] * frame_shift);
-        }
-      }
-
-      fprintf(stdout, "done with words\n");
-      
-    }
-    else {
-
-      fprintf(stderr, "unknown command %s\n", cmd);
-      
-    }
+    return res;
   }
+
+};
+
+BOOST_PYTHON_MODULE(kaldi_model)
+{
+  Py_Initialize();
+  class_< kaldi_model >("kaldi_model", init<std::string, std::string, std::string>(args("nnet_dir", "graph_dir", "fst_rxfilename")))
+    .def("process_audio", &kaldi_model::process_audio);
 }
+
+// int main(int argc, char *argv[]) {
+//     using namespace kaldi;
+//     using namespace fst;
+
+//     setbuf(stdout, NULL);  
+
+//     std::string nnet_dir = "exp/tdnn_7b_chain_online";
+//     std::string graph_dir = nnet_dir + "/graph_pp";
+//     std::string fst_rxfilename = graph_dir + "/HCLG.fst";
+    
+//     if(argc == 3) {
+//       nnet_dir = argv[1];
+//       graph_dir = nnet_dir + "/graph_pp";
+//       fst_rxfilename = argv[2];
+//     }
+//     else if(argc != 1) {
+//       usage();
+//       return EXIT_FAILURE;
+//     }
+  
+//     #ifdef HAVE_CUDA
+//         fprintf(stdout, "Cuda enabled\n");
+//         CuDevice &cu_device = CuDevice::Instantiate();
+//         cu_device.SetVerbose(true);
+//         cu_device.SelectGpuId("yes");
+//         fprintf(stdout, "active gpu: %d\n", cu_device.ActiveGpuId());
+//     #endif
+//     const std::string ivector_model_dir = nnet_dir + "/ivector_extractor";
+//     const std::string nnet3_rxfilename = nnet_dir + "/final.mdl";
+    
+//     const std::string word_syms_rxfilename = graph_dir + "/words.txt";
+//     const string word_boundary_filename = graph_dir + "/phones/word_boundary.int";
+//     const string phone_syms_rxfilename = graph_dir + "/phones.txt";
+
+//     WordBoundaryInfoNewOpts opts; // use default opts
+//     WordBoundaryInfo word_boundary_info(opts, word_boundary_filename);
+
+//     OnlineNnet2FeaturePipelineInfo feature_info;
+//     ConfigFeatureInfo(feature_info, ivector_model_dir);
+//     LatticeFasterDecoderConfig nnet3_decoding_config;
+//     ConfigDecoding(nnet3_decoding_config);
+//     OnlineEndpointConfig endpoint_config;
+//     ConfigEndpoint(endpoint_config);
+    
+
+//     BaseFloat frame_shift = feature_info.FrameShiftInSeconds();
+
+//     TransitionModel trans_model;
+//     nnet3::AmNnetSimple am_nnet;
+//     {
+//       bool binary;
+//       Input ki(nnet3_rxfilename, &binary);
+//       trans_model.Read(ki.Stream(), binary);
+//       am_nnet.Read(ki.Stream(), binary);
+//     }
+
+//     nnet3::NnetSimpleLoopedComputationOptions nnet_simple_looped_opts;
+//     nnet_simple_looped_opts.acoustic_scale = 1.0; // changed from 0.1?
+
+//     nnet3::DecodableNnetSimpleLoopedInfo de_nnet_simple_looped_info(nnet_simple_looped_opts, &am_nnet);
+    
+//     fst::Fst<fst::StdArc> *decode_fst = ReadFstKaldi(fst_rxfilename);
+
+//     fst::SymbolTable *word_syms =
+//       fst::SymbolTable::ReadText(word_syms_rxfilename);
+
+//     fst::SymbolTable* phone_syms =
+//       fst::SymbolTable::ReadText(phone_syms_rxfilename);
+    
+    
+//     OnlineIvectorExtractorAdaptationState adaptation_state(feature_info.ivector_extractor_info);
+
+//     OnlineNnet2FeaturePipeline feature_pipeline(feature_info);
+//     feature_pipeline.SetAdaptationState(adaptation_state);
+
+//     OnlineSilenceWeighting silence_weighting(
+//                                              trans_model,
+//                                              feature_info.silence_weighting_config);
+        
+//     SingleUtteranceNnet3Decoder decoder(nnet3_decoding_config,
+//                                         trans_model,
+//           de_nnet_simple_looped_info,
+//                                         //am_nnet, // kaldi::nnet3::DecodableNnetSimpleLoopedInfo
+//                                         *decode_fst,
+//                                         &feature_pipeline);
+
+
+//     char cmd[1024];
+
+//     while(true) {
+//       // Let the client decide what we should do...
+//       fgets(cmd, sizeof(cmd), stdin);
+
+//       if(strcmp(cmd,"stop\n") == 0) {
+//         break;
+//       }
+//       else if(strcmp(cmd,"reset\n") == 0) {
+//         feature_pipeline.~OnlineNnet2FeaturePipeline();
+//         new (&feature_pipeline) OnlineNnet2FeaturePipeline(feature_info);
+        
+//         decoder.~SingleUtteranceNnet3Decoder();
+//         new (&decoder) SingleUtteranceNnet3Decoder(nnet3_decoding_config,
+//                                                    trans_model,
+//                de_nnet_simple_looped_info,
+//                                                    //am_nnet,
+//                                                    *decode_fst,
+//                                                    &feature_pipeline);
+//       }
+//       else if(strcmp(cmd,"push-chunk\n") == 0) {
+
+//         // Get chunk length from python
+//         int chunk_len;
+//         fgets(cmd, sizeof(cmd), stdin);
+//         sscanf(cmd, "%d\n", &chunk_len);
+
+//         int16_t audio_chunk[chunk_len];  
+//         Vector<BaseFloat> wave_part = Vector<BaseFloat>(chunk_len);
+        
+//         fread(&audio_chunk, 2, chunk_len, stdin);
+        
+//         // We need to copy this into the `wave_part' Vector<BaseFloat> thing.
+//         // From `gst-audio-source.cc' in gst-kaldi-nnet2
+//         for (int i = 0; i < chunk_len ; ++i) {
+//           (wave_part)(i) = static_cast<BaseFloat>(audio_chunk[i]);
+//         }
+
+//         feature_pipeline.AcceptWaveform(arate, wave_part);
+
+//         std::vector<std::pair<int32, BaseFloat> > delta_weights;
+//         if (silence_weighting.Active()) {
+//           silence_weighting.ComputeCurrentTraceback(decoder.Decoder());
+//           silence_weighting.GetDeltaWeights(feature_pipeline.NumFramesReady(),
+//                                             &delta_weights);
+//           feature_pipeline.IvectorFeature()->UpdateFrameWeights(delta_weights);
+//         }
+
+//         decoder.AdvanceDecoding();
+
+//         fprintf(stdout, "ok\n");
+//       }
+//       else if(strcmp(cmd, "get-final\n") == 0) {
+//         feature_pipeline.InputFinished(); // Computes last few frames of input
+//         decoder.AdvanceDecoding();        // Decodes remaining frames
+//         decoder.FinalizeDecoding();
+
+//         Lattice final_lat;
+//         decoder.GetBestPath(true, &final_lat);
+//         CompactLattice clat;
+//         ConvertLattice(final_lat, &clat);      
+
+//         // Compute prons alignment (see: kaldi/latbin/nbest-to-prons.cc)
+//         CompactLattice aligned_clat;
+
+//         std::vector<int32> words, times, lengths;
+//         std::vector<std::vector<int32> > prons;
+//         std::vector<std::vector<int32> > phone_lengths;
+
+//         WordAlignLattice(clat, trans_model, word_boundary_info,
+//                          0, &aligned_clat);
+
+//         CompactLatticeToWordProns(trans_model, aligned_clat, &words, &times,
+//                                   &lengths, &prons, &phone_lengths);
+
+//         for (int i = 0; i < words.size(); i++) {
+//           if(words[i] == 0) {
+//             // <eps> links - silence
+//             continue;
+//           }
+//           fprintf(stdout, "word: %s / start: %f / duration: %f\n",
+//                   word_syms->Find(words[i]).c_str(),
+//                   times[i] * frame_shift,
+//                   lengths[i] * frame_shift);
+//           // Print out the phonemes for this word
+//           for(size_t j=0; j<phone_lengths[i].size(); j++) {
+//             fprintf(stdout, "phone: %s / duration: %f\n",
+//                     phone_syms->Find(prons[i][j]).c_str(),
+//                     phone_lengths[i][j] * frame_shift);
+//           }
+//         }
+
+//         fprintf(stdout, "done with words\n");
+        
+//       }
+//       else {
+
+//         fprintf(stderr, "unknown command %s\n", cmd);
+        
+//       }
+//     }
+// }
