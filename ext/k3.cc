@@ -219,6 +219,7 @@ public:
                               &lengths, &prons, &phone_lengths);
 
     std::string res = "";
+    std::cout << "storing res" << std::endl;
     for (int i = 0; i < words.size(); i++) {
       if(words[i] == 0) {
         // <eps> links - silence
@@ -227,6 +228,7 @@ public:
       char* curr_str;
       sprintf(curr_str, "word: %s / start: %f / duration: %f\n", word_syms->Find(words[i]), times[i] * frame_shift, lengths[i] * frame_shift);
       res += std::string(curr_str);
+      std::cout << res << std::endl;
       // Print out the phonemes for this word
       for(size_t j=0; j<phone_lengths[i].size(); j++) {
         char* curr_str;
