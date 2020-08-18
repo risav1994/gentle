@@ -226,12 +226,12 @@ public:
       }
       char* curr_str;
       sprintf(curr_str, "word: %s / start: %f / duration: %f\n", word_syms->Find(words[i]), times[i] * frame_shift, lengths[i] * frame_shift);
-      res += curr_str;
+      res += std::string(curr_str);
       // Print out the phonemes for this word
       for(size_t j=0; j<phone_lengths[i].size(); j++) {
         char* curr_str;
         sprintf(curr_str, "phone: %s / duration: %f\n", phone_syms->Find(prons[i][j]), phone_lengths[i][j] * frame_shift);
-        res += curr_str;
+        res += std::string(curr_str);
       }
     }
     std::cout << res << std::endl;
