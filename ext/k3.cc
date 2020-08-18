@@ -94,6 +94,8 @@ private:
 public:
   kaldi_model(std::string _nnet_dir, std::string _fst_rxfilename)
   {
+    using namespace kaldi;
+    using namespace fst;
     nnet_dir = _nnet_dir;
     graph_dir = _nnet_dir + "/graph_pp";
     fst_rxfilename = _fst_rxfilename;
@@ -113,16 +115,16 @@ public:
     ConfigFeatureInfo(feature_info, ivector_model_dir);
     ConfigDecoding(nnet3_decoding_config);
 
-    kaldi::nnet3::AmNnetSimple am_nnet;
+    nnet3::AmNnetSimple am_nnet;
     {
       bool binary;
-      kaldi::Input ki(nnet3_rxfilename, &binary);
+      Input ki(nnet3_rxfilename, &binary);
       trans_model.Read(ki.Stream(), binary);
       am_nnet.Read(ki.Stream(), binary);
     }
     decode_fst = ReadFstKaldi(fst_rxfilename);
-    new (&feature_pipeline) kaldi::OnlineNnet2FeaturePipeline(feature_info);
-    new (&decoder) kaldi::SingleUtteranceNnet3Decoder(nnet3_decoding_config,
+    new (&feature_pipeline) OnlineNnet2FeaturePipeline(feature_info);
+    new (&decoder) SingleUtteranceNnet3Decoder(nnet3_decoding_config,
                                                 trans_model,
                                                 de_nnet_simple_looped_info,
                                                 *decode_fst,
@@ -146,8 +148,6 @@ public:
 
   void stop()
   {
-    using namespace kaldi;
-    using namespace fst;
     reset();
   }
 
