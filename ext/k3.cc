@@ -224,10 +224,10 @@ public:
         // <eps> links - silence
         continue;
       }
-      res += "word: " + word_syms->Find(words[i]) + " / start: " + std::to_string(times[i] * frame_shift) + " / duration: " + std::to_string(lengths[i] * frame_shift);
+      res += "word: " + word_syms->Find(words[i]) + " / start: " + std::to_string(times[i] * frame_shift) + " / duration: " + std::to_string(lengths[i] * frame_shift) + "\n";
       // Print out the phonemes for this word
       for(size_t j=0; j<phone_lengths[i].size(); j++) {
-        res += "phone: " + phone_syms->Find(prons[i][j]) + " / duration: " + std::to_string(phone_lengths[i][j] * frame_shift);
+        res += "phone: " + phone_syms->Find(prons[i][j]) + " / duration: " + std::to_string(phone_lengths[i][j] * frame_shift) + "\n";
       }
     }
     return res;
