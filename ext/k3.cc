@@ -234,6 +234,8 @@ public:
         res += curr_str;
       }
     }
+    std::cout << res << std::endl;
+    std::cout << "Error here" << std::endl;
     return res;
   }
 
