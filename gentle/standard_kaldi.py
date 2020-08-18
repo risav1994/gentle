@@ -37,6 +37,7 @@ class Kaldi:
         ret = self.model.process_chunk(buf_file, cnt)
         if os.path.exists(buf_file):
             os.remove(buf_file)
+        print(ret)
         return ret
 
     def get_final(self):
@@ -63,8 +64,13 @@ class Kaldi:
         self._reset()
         return words
 
-    def _reset(self):
-        self._cmd("reset")
+    def reset(self):
+        self.model.reset()
+
+    def stop(self):
+        if not self.finished:
+            self.finished = True
+            self.model.stop()
 
 
 if __name__ == '__main__':
