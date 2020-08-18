@@ -229,7 +229,9 @@ public:
       res += curr_str;
       // Print out the phonemes for this word
       for(size_t j=0; j<phone_lengths[i].size(); j++) {
-        // res += std::string(boost::format("phone: %1% / duration: %2%\n") % phone_syms->Find(prons[i][j]) % (phone_lengths[i][j] * frame_shift));
+        char* curr_str;
+        sprintf(curr_str, "phone: %s / duration: %f\n", phone_syms->Find(prons[i][j]), phone_lengths[i][j] * frame_shift);
+        res += curr_str;
       }
     }
     return res;
