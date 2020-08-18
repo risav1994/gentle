@@ -83,13 +83,6 @@ class kaldi_model
 private:
   std::string nnet_dir, graph_dir, fst_rxfilename, ivector_model_dir, nnet3_rxfilename, word_syms_rxfilename, word_boundary_filename, 
       phone_syms_rxfilename;
-  kaldi::OnlineNnet2FeaturePipelineInfo feature_info;
-  kaldi::LatticeFasterDecoderConfig nnet3_decoding_config;
-  kaldi::TransitionModel trans_model;
-  kaldi::nnet3::AmNnetSimple am_nnet;
-  kaldi::OnlineNnet2FeaturePipeline feature_pipeline;
-  kaldi::SingleUtteranceNnet3Decoder decoder;
-  fst::Fst<fst::StdArc> *decode_fst;
 
 public:
   kaldi_model(std::string _nnet_dir, std::string _fst_rxfilename)
@@ -112,7 +105,13 @@ public:
     word_syms_rxfilename = graph_dir + "/words.txt";
     word_boundary_filename = graph_dir + "/phones/word_boundary.int";
     phone_syms_rxfilename = graph_dir + "/phones.txt";
+    extern OnlineNnet2FeaturePipelineInfo feature_info;
+    extern LatticeFasterDecoderConfig nnet3_decoding_config;
+    extern TransitionModel trans_model;
+    extern nnet3::AmNnetSimple am_nnet;
+    extern fst::Fst<fst::StdArc> *decode_fst;
     ConfigFeatureInfo(feature_info, ivector_model_dir);
+    extern OnlineNnet2FeaturePipeline feature_pipeline(feature_info);
     ConfigDecoding(nnet3_decoding_config);
 
     nnet3::AmNnetSimple am_nnet;
@@ -123,8 +122,7 @@ public:
       am_nnet.Read(ki.Stream(), binary);
     }
     decode_fst = ReadFstKaldi(fst_rxfilename);
-    new (&feature_pipeline) OnlineNnet2FeaturePipeline(feature_info);
-    new (&decoder) SingleUtteranceNnet3Decoder(nnet3_decoding_config,
+    extern SingleUtteranceNnet3Decoder decoder(nnet3_decoding_config,
                                                 trans_model,
                                                 de_nnet_simple_looped_info,
                                                 *decode_fst,
@@ -264,8 +262,8 @@ BOOST_PYTHON_MODULE(kaldi_model)
 {
   Py_Initialize();
   class_< kaldi_model >("kaldi_model", init<std::string, std::string>(args("nnet_dir", "fst_rxfilename")))
-    .def("process_chunk", &kaldi_model::process_chunk);
-    .def("reset", &kaldi_model::reset);
+    .def("process_chunk", &kaldi_model::process_chunk)
+    .def("reset", &kaldi_model::reset)
     .def("stop", &kaldi_model::stop);
 }
 
