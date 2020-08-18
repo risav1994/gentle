@@ -81,21 +81,17 @@ void usage() {
 class kaldi_model
 {
 private:
-  using namespace kaldi;
-  using namespace fst;
   std::string nnet_dir, graph_dir, fst_rxfilename, ivector_model_dir, nnet3_rxfilename, word_syms_rxfilename, word_boundary_filename, 
       phone_syms_rxfilename;
-  OnlineNnet2FeaturePipelineInfo feature_info;
-  LatticeFasterDecoderConfig nnet3_decoding_config;
-  TransitionModel trans_model;
-  nnet3::AmNnetSimple am_nnet;
-  OnlineNnet2FeaturePipeline feature_pipeline;
-  SingleUtteranceNnet3Decoder decoder;
+  kaldi::OnlineNnet2FeaturePipelineInfo feature_info;
+  kaldi::LatticeFasterDecoderConfig nnet3_decoding_config;
+  kaldi::TransitionModel trans_model;
+  kaldi::nnet3::AmNnetSimple am_nnet;
+  kaldi::OnlineNnet2FeaturePipeline feature_pipeline;
+  kaldi::SingleUtteranceNnet3Decoder decoder;
   fst::Fst<fst::StdArc> *decode_fst;
 
 public:
-  using namespace kaldi;
-  using namespace fst;
   kaldi_model(std::string _nnet_dir, std::string _fst_rxfilename)
   {
     nnet_dir = _nnet_dir;
@@ -117,10 +113,10 @@ public:
     ConfigFeatureInfo(feature_info, ivector_model_dir);
     ConfigDecoding(nnet3_decoding_config);
 
-    nnet3::AmNnetSimple am_nnet;
+    kaldi::nnet3::AmNnetSimple am_nnet;
     {
       bool binary;
-      Input ki(nnet3_rxfilename, &binary);
+      kaldi::Input ki(nnet3_rxfilename, &binary);
       trans_model.Read(ki.Stream(), binary);
       am_nnet.Read(ki.Stream(), binary);
     }
