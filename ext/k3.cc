@@ -111,6 +111,33 @@ public:
     {
       OnlineNnet2FeaturePipelineInfo feature_info;
       ConfigFeatureInfo(feature_info, ivector_model_dir);
+      LatticeFasterDecoderConfig nnet3_decoding_config;
+      ConfigDecoding(nnet3_decoding_config);
+      OnlineEndpointConfig endpoint_config;
+      ConfigEndpoint(endpoint_config);
+      TransitionModel trans_model;
+      nnet3::AmNnetSimple am_nnet;
+      {
+        bool binary;
+        Input ki(nnet3_rxfilename, &binary);
+        trans_model.Read(ki.Stream(), binary);
+        am_nnet.Read(ki.Stream(), binary);
+      }
+
+      nnet3::NnetSimpleLoopedComputationOptions nnet_simple_looped_opts;
+      nnet_simple_looped_opts.acoustic_scale = 1.0; // changed from 0.1?
+
+      nnet3::DecodableNnetSimpleLoopedInfo de_nnet_simple_looped_info(nnet_simple_looped_opts, &am_nnet);
+
+      fst::Fst<fst::StdArc> *decode_fst = ReadFstKaldi(fst_rxfilename);
+
+      OnlineNnet2FeaturePipeline feature_pipeline(feature_info);
+
+      SingleUtteranceNnet3Decoder decoder(nnet3_decoding_config,
+                                        trans_model,
+                                        de_nnet_simple_looped_info,
+                                        *decode_fst,
+                                        &feature_pipeline);
 
     }
   }
