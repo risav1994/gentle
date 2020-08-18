@@ -224,7 +224,9 @@ public:
         // <eps> links - silence
         continue;
       }
-      // res += std::string(boost::format("word: %1% / start: %2% / duration: %3%\n") % word_syms->Find(words[i]) % (times[i] * frame_shift) % (lengths[i] * frame_shift));
+      char* curr_str;
+      sprintf(curr_str, "word: %s / start: %f / duration: %f\n", word_syms->Find(words[i]), times[i] * frame_shift, lengths[i] * frame_shift);
+      res += curr_str;
       // Print out the phonemes for this word
       for(size_t j=0; j<phone_lengths[i].size(); j++) {
         // res += std::string(boost::format("phone: %1% / duration: %2%\n") % phone_syms->Find(prons[i][j]) % (phone_lengths[i][j] * frame_shift));
