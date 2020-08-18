@@ -6,12 +6,13 @@ from gentle import transcription
 
 from multiprocessing.pool import ThreadPool as Pool
 
+
 class MultiThreadedTranscriber:
     def __init__(self, kaldi_queue, chunk_len=20, overlap_t=2, nthreads=4):
         self.chunk_len = chunk_len
         self.overlap_t = overlap_t
         self.nthreads = nthreads
-            
+
         self.kaldi_queue = kaldi_queue
 
     def transcribe(self, wavfile, progress_cb=None):
@@ -20,7 +21,6 @@ class MultiThreadedTranscriber:
         n_chunks = int(math.ceil(duration / float(self.chunk_len - self.overlap_t)))
 
         chunks = []
-
 
         def transcribe_chunk(idx):
             wav_obj = wave.open(wavfile, 'rb')
@@ -35,9 +35,7 @@ class MultiThreadedTranscriber:
                 ret = []
             else:
                 k = self.kaldi_queue.get()
-                k.push_chunk(buf)
-                ret = k.get_final()
-                # k.reset() (no longer needed)
+                ret = k.process_chunk(buf)
                 self.kaldi_queue.put(k)
 
             chunks.append({"start": start_t, "words": ret})
@@ -46,11 +44,10 @@ class MultiThreadedTranscriber:
                 progress_cb({"message": ' '.join([X['word'] for X in ret]),
                              "percent": len(chunks) / float(n_chunks)})
 
-
         pool = Pool(min(n_chunks, self.nthreads))
         pool.map(transcribe_chunk, range(n_chunks))
         pool.close()
-        
+
         chunks.sort(key=lambda x: x['start'])
 
         # Combine chunks
@@ -90,7 +87,7 @@ class MultiThreadedTranscriber:
         return words, duration
 
 
-if __name__=='__main__':
+if __name__ == '__main__':
     # full transcription
     import json
     import sys
@@ -111,4 +108,3 @@ if __name__=='__main__':
         words, duration = trans.transcribe(filename)
 
     open(sys.argv[2], 'w').write(transcription.Transcription(words=words).to_json())
-

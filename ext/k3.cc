@@ -85,10 +85,10 @@ private:
       phone_syms_rxfilename;
 
 public:
-  kaldi_model(std::string _nnet_dir, std::string _graph_dir, std::string _fst_rxfilename)
+  kaldi_model(std::string _nnet_dir, std::string _fst_rxfilename)
   {
     nnet_dir = _nnet_dir;
-    graph_dir = _graph_dir;
+    graph_dir = _nnet_dir + "/graph_pp";
     fst_rxfilename = _fst_rxfilename;
     #ifdef HAVE_CUDA
       fprintf(stdout, "Cuda enabled\n");
@@ -105,7 +105,7 @@ public:
     phone_syms_rxfilename = graph_dir + "/phones.txt";
   }
 
-  std::string process_audio(char* chunk_file, int chunk_len)
+  std::string process_chunk(char* chunk_file, int chunk_len)
   {
     using namespace kaldi;
     using namespace fst;
@@ -170,6 +170,8 @@ public:
     FILE* fp = fopen(chunk_file, "rb");
 
     fread(&audio_chunk, 2, chunk_len, fp);
+
+    fclose(fp);
     // for (int i = 0; i < chunk_len; i++) 
     // {
     //   // std::string mini_chunk = std::string(&(chunk[2 * i + 1])) + std::string(&(chunk[2 * i  + 2]));
@@ -238,7 +240,7 @@ BOOST_PYTHON_MODULE(kaldi_model)
 {
   Py_Initialize();
   class_< kaldi_model >("kaldi_model", init<std::string, std::string, std::string>(args("nnet_dir", "graph_dir", "fst_rxfilename")))
-    .def("process_audio", &kaldi_model::process_audio);
+    .def("process_chunk", &kaldi_model::process_chunk);
 }
 
 // int main(int argc, char *argv[]) {
