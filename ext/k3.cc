@@ -80,9 +80,9 @@ void usage() {
 
 class kaldi_model
 {
+private:
   using namespace kaldi;
   using namespace fst;
-private:
   std::string nnet_dir, graph_dir, fst_rxfilename, ivector_model_dir, nnet3_rxfilename, word_syms_rxfilename, word_boundary_filename, 
       phone_syms_rxfilename;
   OnlineNnet2FeaturePipelineInfo feature_info;
@@ -94,6 +94,8 @@ private:
   fst::Fst<fst::StdArc> *decode_fst;
 
 public:
+  using namespace kaldi;
+  using namespace fst;
   kaldi_model(std::string _nnet_dir, std::string _fst_rxfilename)
   {
     nnet_dir = _nnet_dir;
