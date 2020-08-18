@@ -121,8 +121,8 @@ public:
       am_nnet.Read(ki.Stream(), binary);
     }
     decode_fst = ReadFstKaldi(fst_rxfilename);
-    new (&feature_pipeline) OnlineNnet2FeaturePipeline(feature_info);
-    new (&decoder) SingleUtteranceNnet3Decoder(nnet3_decoding_config,
+    new (&feature_pipeline) kaldi::OnlineNnet2FeaturePipeline(feature_info);
+    new (&decoder) kaldi::SingleUtteranceNnet3Decoder(nnet3_decoding_config,
                                                 trans_model,
                                                 de_nnet_simple_looped_info,
                                                 *decode_fst,
@@ -131,6 +131,8 @@ public:
 
   void reset()
   {
+    using namespace kaldi;
+    using namespace fst;
     feature_pipeline.~OnlineNnet2FeaturePipeline();
     new (&feature_pipeline) OnlineNnet2FeaturePipeline(feature_info);
           
@@ -144,6 +146,8 @@ public:
 
   void stop()
   {
+    using namespace kaldi;
+    using namespace fst;
     reset();
   }
 
