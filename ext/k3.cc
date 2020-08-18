@@ -78,6 +78,8 @@ void usage() {
   fprintf(stderr, "usage: k3 [nnet_dir hclg_path]\n");
 }
 
+namespace model_variables {}
+
 class kaldi_model
 {
 private:
@@ -85,7 +87,6 @@ private:
       phone_syms_rxfilename;
 
 public:
-  namespace model_variables {}
   kaldi_model(std::string _nnet_dir, std::string _fst_rxfilename)
   {
     using namespace kaldi;
