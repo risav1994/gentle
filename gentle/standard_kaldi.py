@@ -61,16 +61,11 @@ class Kaldi:
                 ph['duration'] = float(parts[1].split(': ')[1])
                 words[-1]['phones'].append(ph)
 
-        self._reset()
         return words
-
-    def reset(self):
-        self.model.reset()
 
     def stop(self):
         if not self.finished:
             self.finished = True
-            self.model.stop()
 
 
 if __name__ == '__main__':
