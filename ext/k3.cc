@@ -111,7 +111,8 @@ public:
     extern nnet3::AmNnetSimple am_nnet;
     extern fst::Fst<fst::StdArc> *decode_fst;
     ConfigFeatureInfo(feature_info, ivector_model_dir);
-    extern OnlineNnet2FeaturePipeline feature_pipeline(feature_info);
+    OnlineNnet2FeaturePipeline feature_pipeline(feature_info);
+    extern feature_pipeline;
     ConfigDecoding(nnet3_decoding_config);
 
     nnet3::AmNnetSimple am_nnet;
@@ -122,11 +123,12 @@ public:
       am_nnet.Read(ki.Stream(), binary);
     }
     decode_fst = ReadFstKaldi(fst_rxfilename);
-    extern SingleUtteranceNnet3Decoder decoder(nnet3_decoding_config,
+    SingleUtteranceNnet3Decoder decoder(nnet3_decoding_config,
                                                 trans_model,
                                                 de_nnet_simple_looped_info,
                                                 *decode_fst,
                                                 &feature_pipeline);
+    extern decoder;
   }
 
   void reset()
