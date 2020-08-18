@@ -85,6 +85,7 @@ private:
       phone_syms_rxfilename;
 
 public:
+  namespace model_variables {}
   kaldi_model(std::string _nnet_dir, std::string _fst_rxfilename)
   {
     using namespace kaldi;
@@ -105,50 +106,13 @@ public:
     word_syms_rxfilename = graph_dir + "/words.txt";
     word_boundary_filename = graph_dir + "/phones/word_boundary.int";
     phone_syms_rxfilename = graph_dir + "/phones.txt";
-    extern OnlineNnet2FeaturePipelineInfo feature_info;
-    extern LatticeFasterDecoderConfig nnet3_decoding_config;
-    extern TransitionModel trans_model;
-    extern nnet3::AmNnetSimple am_nnet;
-    extern fst::Fst<fst::StdArc> *decode_fst;
-    ConfigFeatureInfo(feature_info, ivector_model_dir);
-    OnlineNnet2FeaturePipeline feature_pipeline(feature_info);
-    extern feature_pipeline;
-    ConfigDecoding(nnet3_decoding_config);
-
-    nnet3::AmNnetSimple am_nnet;
+    
+    namespace model_variables
     {
-      bool binary;
-      Input ki(nnet3_rxfilename, &binary);
-      trans_model.Read(ki.Stream(), binary);
-      am_nnet.Read(ki.Stream(), binary);
+      OnlineNnet2FeaturePipelineInfo feature_info;
+      ConfigFeatureInfo(feature_info, ivector_model_dir);
+
     }
-    decode_fst = ReadFstKaldi(fst_rxfilename);
-    SingleUtteranceNnet3Decoder decoder(nnet3_decoding_config,
-                                                trans_model,
-                                                de_nnet_simple_looped_info,
-                                                *decode_fst,
-                                                &feature_pipeline);
-    extern decoder;
-  }
-
-  void reset()
-  {
-    using namespace kaldi;
-    using namespace fst;
-    feature_pipeline.~OnlineNnet2FeaturePipeline();
-    new (&feature_pipeline) OnlineNnet2FeaturePipeline(feature_info);
-          
-    decoder.~SingleUtteranceNnet3Decoder();
-    new (&decoder) SingleUtteranceNnet3Decoder(nnet3_decoding_config,
-                                                trans_model,
-                                                de_nnet_simple_looped_info,
-                                                *decode_fst,
-                                                &feature_pipeline);
-  }
-
-  void stop()
-  {
-    reset();
   }
 
   std::string process_chunk(char* chunk_file, int chunk_len)
@@ -158,16 +122,31 @@ public:
     WordBoundaryInfoNewOpts opts; // use default opts
     WordBoundaryInfo word_boundary_info(opts, word_boundary_filename);
 
-    
+    OnlineNnet2FeaturePipelineInfo feature_info;
+    ConfigFeatureInfo(feature_info, ivector_model_dir);
+    LatticeFasterDecoderConfig nnet3_decoding_config;
+    ConfigDecoding(nnet3_decoding_config);
     OnlineEndpointConfig endpoint_config;
     ConfigEndpoint(endpoint_config);
     
+
     BaseFloat frame_shift = feature_info.FrameShiftInSeconds();
+
+    TransitionModel trans_model;
+    nnet3::AmNnetSimple am_nnet;
+    {
+      bool binary;
+      Input ki(nnet3_rxfilename, &binary);
+      trans_model.Read(ki.Stream(), binary);
+      am_nnet.Read(ki.Stream(), binary);
+    }
 
     nnet3::NnetSimpleLoopedComputationOptions nnet_simple_looped_opts;
     nnet_simple_looped_opts.acoustic_scale = 1.0; // changed from 0.1?
 
     nnet3::DecodableNnetSimpleLoopedInfo de_nnet_simple_looped_info(nnet_simple_looped_opts, &am_nnet);
+    
+    fst::Fst<fst::StdArc> *decode_fst = ReadFstKaldi(fst_rxfilename);
 
     fst::SymbolTable *word_syms =
       fst::SymbolTable::ReadText(word_syms_rxfilename);
@@ -178,12 +157,18 @@ public:
     
     OnlineIvectorExtractorAdaptationState adaptation_state(feature_info.ivector_extractor_info);
 
-    
+    OnlineNnet2FeaturePipeline feature_pipeline(feature_info);
     feature_pipeline.SetAdaptationState(adaptation_state);
 
     OnlineSilenceWeighting silence_weighting(
                                              trans_model,
                                              feature_info.silence_weighting_config);
+        
+    SingleUtteranceNnet3Decoder decoder(nnet3_decoding_config,
+                                        trans_model,
+                                        de_nnet_simple_looped_info,
+                                        *decode_fst,
+                                        &feature_pipeline);
 
 
     // Get chunk length from python
@@ -264,9 +249,7 @@ BOOST_PYTHON_MODULE(kaldi_model)
 {
   Py_Initialize();
   class_< kaldi_model >("kaldi_model", init<std::string, std::string>(args("nnet_dir", "fst_rxfilename")))
-    .def("process_chunk", &kaldi_model::process_chunk)
-    .def("reset", &kaldi_model::reset)
-    .def("stop", &kaldi_model::stop);
+    .def("process_chunk", &kaldi_model::process_chunk);
 }
 
 // int main(int argc, char *argv[]) {

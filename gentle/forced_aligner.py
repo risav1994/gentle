@@ -5,6 +5,8 @@ from gentle import metasentence
 from gentle import multipass
 from gentle.transcriber import MultiThreadedTranscriber
 from gentle.transcription import Transcription
+from queue import Empty
+
 
 class ForcedAligner():
 
@@ -24,8 +26,11 @@ class ForcedAligner():
 
         # Clear queue (would this be gc'ed?)
         for i in range(self.nthreads):
-            k = self.queue.get()
-            k.stop()
+            try:
+                k = self.queue.get(block=False)
+                del k
+            except Empty:
+                continue
 
         # Align words
         words = diff_align.align(words, self.ms, **self.kwargs)
@@ -123,21 +128,25 @@ class AdjacencyOptimizer():
         # opposite neighbors
         if side == "left":
             p, q = (i-n, i)
-            if p < 0: return False
+            if p < 0:
+                return False
             opp_gap = self.tstart(p) - self.tend(p)
         else:
             p, q = (j, j+n)
-            if q > len(self.words): return False
+            if q > len(self.words):
+                return False
             opp_gap = self.tstart(q) - self.tend(q)
 
         # is there a matching subsequence?
         k = self.find_subseq(i, j, p, n)
-        if k is None: return False
+        if k is None:
+            return False
 
         # if the opposite gap isn't bigger than the sequence gap, no benefit to
         # potential swap
         seq_gap = self.tstart(j) - self.tend(i)
-        if opp_gap <= seq_gap: return False
+        if opp_gap <= seq_gap:
+            return False
 
         # swap subsequences at p and k
         for m in range(0, n):
@@ -149,9 +158,11 @@ class AdjacencyOptimizer():
         '''Given an out-of-audio sequence at [i,j), looks for an opportunity to
         swap a sub-sequence with adjacent words at [p, i) or [j, p)'''
 
-        for n in reversed(range(1, (j-i)+1)): # consider larger moves first
-            if self.swap_adjacent_if_better(i, j, n, "left"): return True
-            if self.swap_adjacent_if_better(i, j, n, "right"): return True
+        for n in reversed(range(1, (j-i)+1)):  # consider larger moves first
+            if self.swap_adjacent_if_better(i, j, n, "left"):
+                return True
+            if self.swap_adjacent_if_better(i, j, n, "right"):
+                return True
 
     def optimize(self):
         i = 0
@@ -166,6 +177,6 @@ class AdjacencyOptimizer():
                     i -= 1
 
             else:
-                i = j # skip past this sequence
+                i = j  # skip past this sequence
 
         return self.words
