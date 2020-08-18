@@ -34,19 +34,16 @@ class Kaldi:
         file = open(buf_file, "wb")
         file.write(buf)
         file.close()
-        ret = self.model.process_chunk(buf_file, cnt)
+        self.res = self.model.process_chunk(buf_file, cnt)
         if os.path.exists(buf_file):
             os.remove(buf_file)
-        print(ret)
+        ret = self.get_final()
         return ret
 
     def get_final(self):
-        self._cmd("get-final")
         words = []
-        while True:
-            line = self._p.stdout.readline().decode()
-            if line.startswith("done"):
-                break
+        lines = self.res.split("\n")
+        for line in lines:
             parts = line.split(' / ')
             if line.startswith('word'):
                 wd = {}
