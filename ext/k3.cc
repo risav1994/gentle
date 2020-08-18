@@ -239,7 +239,7 @@ public:
 BOOST_PYTHON_MODULE(kaldi_model)
 {
   Py_Initialize();
-  class_< kaldi_model >("kaldi_model", init<std::string, std::string, std::string>(args("nnet_dir", "graph_dir", "fst_rxfilename")))
+  class_< kaldi_model >("kaldi_model", init<std::string, std::string>(args("nnet_dir", "fst_rxfilename")))
     .def("process_chunk", &kaldi_model::process_chunk);
 }
 
