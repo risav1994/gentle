@@ -92,8 +92,9 @@ public:
     #ifdef HAVE_CUDA
       fprintf(stdout, "Cuda enabled\n");
       kaldi::CuDevice &cu_device = kaldi::CuDevice::Instantiate();
-      fprintf(stdout, "%d\n", cu_device.ActiveGpuId());
-      cu_device.SelectGpuId("yes");
+      if (cu_device.ActiveGpuId() < 0) {
+        cu_device.SelectGpuId("yes");
+      }
       fprintf(stdout, "active gpu: %d\n", cu_device.ActiveGpuId());
     #endif
     ivector_model_dir = nnet_dir + "/ivector_extractor";
