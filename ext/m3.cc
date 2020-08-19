@@ -10,8 +10,6 @@
 #include <Python.h>
 #include <boost/python.hpp>
 
-using namespace boost::python;
-
 class kaldi_lm
 {
 public:
