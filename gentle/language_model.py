@@ -9,7 +9,6 @@ import tempfile
 from .util.paths import get_binary
 from .metasentence import MetaSentence
 from .resources import Resources
-from kaldi_lm import kaldi_lm
 
 MKGRAPH_PATH = get_binary("ext/m3")
 
@@ -115,20 +114,21 @@ def make_bigram_language_model(kaldi_seq, proto_langdir, **kwargs):
     txt_fst_file.close()
 
     hclg_filename = tempfile.mktemp(suffix='_HCLG.fst')
-
-    lm = kaldi_lm()
-    status = 0
     try:
-        status = lm.make_lm(proto_langdir, txt_fst_file.name, hclg_filename)
+        devnull = open(os.devnull, 'wb')
+        subprocess.check_output([MKGRAPH_PATH,
+                                 proto_langdir,
+                                 txt_fst_file.name,
+                                 hclg_filename],
+                                stderr=devnull)
     except Exception as e:
-        if os.path.exists(txt_fst_file.name):
-            os.unlink(txt_fst_file.name)
+        try:
+            os.unlink(hclg_filename)
+        except:
+            pass
         raise e
-    if os.path.exists(txt_fst_file.name):
+    finally:
         os.unlink(txt_fst_file.name)
-
-    if status != 1:
-        raise Exception("Unable to create fst file. Check logs for more details.")
 
     return hclg_filename
 
