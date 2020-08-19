@@ -92,7 +92,6 @@ public:
     #ifdef HAVE_CUDA
       fprintf(stdout, "Cuda enabled\n");
       kaldi::CuDevice &cu_device = kaldi::CuDevice::Instantiate();
-      cu_device.SetVerbose(true);
       cu_device.SelectGpuId("yes");
       fprintf(stdout, "active gpu: %d\n", cu_device.ActiveGpuId());
     #endif
