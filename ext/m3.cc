@@ -188,7 +188,7 @@ public:
             return -1;
         }
     }
-}
+};
 
 BOOST_PYTHON_MODULE(kaldi_lm)
 {
