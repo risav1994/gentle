@@ -91,7 +91,7 @@ public:
     fst_rxfilename = _fst_rxfilename;
     #ifdef HAVE_CUDA
       fprintf(stdout, "Cuda enabled\n");
-      CuDevice &cu_device = CuDevice::Instantiate();
+      kaldi::CuDevice &cu_device = kaldi::CuDevice::Instantiate();
       cu_device.SetVerbose(true);
       cu_device.SelectGpuId("yes");
       fprintf(stdout, "active gpu: %d\n", cu_device.ActiveGpuId());
