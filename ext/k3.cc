@@ -11,7 +11,6 @@
 #include "nnet3/decodable-simple-looped.h"
 #include <Python.h>
 #include <boost/python.hpp>
-#include <boost/format.hpp>
 
 using namespace boost::python;
 
