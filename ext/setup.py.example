@@ -22,7 +22,7 @@ ext_model = Extension(
 )
 
 ext_lm = Extension(
-    "kaldi_model",
+    "kaldi_lm",
     sources=['m3.cc'],
     library_dirs=[f'{base_path}/boost_1_74_0/release/lib', f'{base_path}/gentle/ext/kaldi/tools/OpenBLAS/install/lib'],
     libraries=['boost_python3', 'gfortran', 'm', 'dl', 'pthread', 'openblas'],
