@@ -191,6 +191,6 @@ public:
 BOOST_PYTHON_MODULE(kaldi_lm)
 {
   Py_Initialize();
-  class_< kaldi_lm >("kaldi_lm", init<>())
+  boost::python::class_< kaldi_lm >("kaldi_lm", boost::python::init<>())
     .def("make_lm", &kaldi_lm::make_lm);
 }
