@@ -12,8 +12,6 @@
 #include <Python.h>
 #include <boost/python.hpp>
 
-using namespace boost::python;
-
 #ifdef HAVE_CUDA
 #include "cudamatrix/cu-device.h"
 #endif
@@ -232,6 +230,6 @@ public:
 BOOST_PYTHON_MODULE(kaldi_model)
 {
   Py_Initialize();
-  class_< kaldi_model >("kaldi_model", init<std::string, std::string>(args("nnet_dir", "fst_rxfilename")))
+  boost::python::class_< kaldi_model >("kaldi_model", boost::python::init<std::string, std::string>(boost::python::args("nnet_dir", "fst_rxfilename")))
     .def("process_chunk", &kaldi_model::process_chunk);
 }
