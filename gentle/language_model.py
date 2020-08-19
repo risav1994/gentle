@@ -9,7 +9,7 @@ import tempfile
 from .util.paths import get_binary
 from .metasentence import MetaSentence
 from .resources import Resources
-from kaldi_model import kaldi_lm
+from kaldi_lm import kaldi_lm
 
 MKGRAPH_PATH = get_binary("ext/m3")
 
